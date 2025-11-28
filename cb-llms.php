@@ -19,9 +19,15 @@ add_action( 'template_redirect', 'cbp_llms_redirect_old_location' );
  * Redirects requests for /llms.txt to /.well-known/llms.txt
  */
 function cbp_llms_redirect_old_location() {
-	if ( isset( $_SERVER['REQUEST_URI'] ) && '/llms.txt' === $_SERVER['REQUEST_URI'] ) {
-		wp_safe_redirect( '/.well-known/llms.txt', 301 );
-		exit;
+	if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+		// Match /llms.txt or /llms.txt?params at root or in subdirectory.
+		if ( preg_match( '#/llms\.txt(\?.*)?$#', $request_uri ) ) {
+			$site_path = wp_parse_url( get_site_url(), PHP_URL_PATH );
+			$new_path  = trailingslashit( $site_path ) . '.well-known/llms.txt';
+			wp_safe_redirect( $new_path, 301 );
+			exit;
+		}
 	}
 }
 
@@ -82,6 +88,9 @@ function cbp_llms_admin_page() {
 
 			if ( 301 === $status_code && false !== strpos( $location, '.well-known/llms.txt' ) ) {
 				$redirect_test = '<div class="notice notice-success"><p>✓ Redirect is working: <code>/llms.txt</code> → <code>/.well-known/llms.txt</code> (301)</p></div>';
+			} elseif ( 404 === $status_code ) {
+				$redirect_test  = '<div class="notice notice-info"><p><strong>Note:</strong> The file <code>/.well-known/llms.txt</code> does not exist yet. ';
+				$redirect_test .= 'Click "Export to llms.txt" below to create it. The redirect will work once the file is created.</p></div>';
 			} elseif ( 200 === $status_code ) {
 				$redirect_test  = '<div class="notice notice-warning"><p>⚠ Redirect may not be working. <code>/llms.txt</code> returned status 200. ';
 				$redirect_test .= 'This could be due to caching or server configuration.</p></div>';

@@ -20,20 +20,21 @@ function cbp_llms_redirect_instructions() {
 	$site_url        = get_site_url();
 	
 	if ( $has_redirection ) {
-		echo '<div class="notice notice-info"><p><strong>Set up redirect:</strong> A placeholder <code>/llms.txt</code> file will be created to enable redirects.</p>';
-		echo '<p>In the Redirection plugin (<strong>Tools → Redirection</strong>), add:</p>';
+		echo '<div class="notice notice-info"><p><strong>Set up redirect:</strong> In the Redirection plugin (<strong>Tools → Redirection</strong>), add:</p>';
 		echo '<ul style="margin-left: 2em;">';
 		echo '<li>Source URL: <code>/llms.txt</code></li>';
+		echo '<li>Match: <strong>URL only</strong></li>';
+		echo '<li>When matched: <strong>Redirect to URL</strong></li>';
 		echo '<li>Target URL: <code>' . esc_html( $site_url ) . '/.well-known/llms.txt</code></li>';
 		echo '<li>HTTP Code: <strong>301 - Moved Permanently</strong></li>';
-		echo '</ul></div>';
+		echo '</ul>';
+		echo '<p><strong>Important:</strong> Make sure no <code>/llms.txt</code> file exists in your site root, or delete it. ';
+		echo 'The redirect only works if the file doesn\'t exist.</p></div>';
 	} else {
-		echo '<div class="notice notice-info"><p><strong>Redirect setup:</strong> A placeholder <code>/llms.txt</code> will be created.</p>';
-		echo '<p>To redirect it to <code>/.well-known/llms.txt</code>:</p>';
+		echo '<div class="notice notice-info"><p><strong>Redirect setup:</strong> To redirect <code>/llms.txt</code> to <code>/.well-known/llms.txt</code>:</p>';
 		echo '<ul style="margin-left: 2em;">';
-		echo '<li><strong>Install the Redirection plugin</strong> (recommended)</li>';
+		echo '<li><strong>Install the Redirection plugin</strong> (recommended for WP Engine)</li>';
 		echo '<li><strong>Or for WP Engine:</strong> Add redirect in User Portal</li>';
-		echo '<li><strong>Or for Apache:</strong> Add to .htaccess</li>';
 		echo '</ul></div>';
 	}
 }
@@ -67,9 +68,8 @@ function cbp_llms_admin_page() {
 	// Check if old llms.txt exists in root.
 	$old_file = ABSPATH . 'llms.txt';
 	if ( file_exists( $old_file ) ) {
-		echo '<div class="notice notice-warning"><p><strong>Notice:</strong> An old <code>llms.txt</code> file exists in your site root. ';
-		echo 'This plugin now uses <code>.well-known/llms.txt</code> instead. ';
-		echo 'You may want to delete the old file and set up a redirect (see below).</p></div>';
+		echo '<div class="notice notice-warning"><p><strong>Notice:</strong> A <code>/llms.txt</code> file exists in your site root. ';
+		echo 'Please delete it so the Redirection plugin can handle the redirect from <code>/llms.txt</code> to <code>/.well-known/llms.txt</code>.</p></div>';
 	}
 
 	// Show redirect instructions.
@@ -147,14 +147,8 @@ function cbp_llms_admin_page() {
 
 			$file = $well_known_dir . '/llms.txt';
 			if ( $wp_filesystem->put_contents( $file, $output, FS_CHMOD_FILE ) ) {
-				// Also create a placeholder /llms.txt in root for redirect purposes.
-				$root_placeholder    = ABSPATH . 'llms.txt';
-				$placeholder_content = '# This file has moved to /.well-known/llms.txt';
-				$wp_filesystem->put_contents( $root_placeholder, $placeholder_content, FS_CHMOD_FILE );
-				
 				echo '<h2>Export Complete</h2>';
 				echo '<p>Output written to <code>.well-known/llms.txt</code></p>';
-				echo '<p>A placeholder file was created at <code>/llms.txt</code> to enable redirects.</p>';
 				echo '<pre>' . esc_html( $output ) . '</pre>';
 			} else {
 				echo '<h2>Export Failed</h2>';

@@ -59,7 +59,44 @@ function cbp_llms_admin_page() {
 		echo 'The old file will be automatically redirected, but you may want to delete it manually.</p></div>';
 	}
 
+	// Check redirect status.
+	$site_url      = get_site_url();
+	$old_url       = trailingslashit( $site_url ) . 'llms.txt';
+	$new_url       = trailingslashit( $site_url ) . '.well-known/llms.txt';
+	$new_file      = ABSPATH . '.well-known/llms.txt';
+	$redirect_test = '';
+
+	if ( file_exists( $new_file ) ) {
+		// Test if redirect is working.
+		$response = wp_remote_head(
+			$old_url,
+			array(
+				'redirection' => 0,
+				'sslverify'   => false,
+			)
+		);
+
+		if ( ! is_wp_error( $response ) ) {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$location    = wp_remote_retrieve_header( $response, 'location' );
+
+			if ( 301 === $status_code && false !== strpos( $location, '.well-known/llms.txt' ) ) {
+				$redirect_test = '<div class="notice notice-success"><p>✓ Redirect is working: <code>/llms.txt</code> → <code>/.well-known/llms.txt</code> (301)</p></div>';
+			} elseif ( 200 === $status_code ) {
+				$redirect_test  = '<div class="notice notice-warning"><p>⚠ Redirect may not be working. <code>/llms.txt</code> returned status 200. ';
+				$redirect_test .= 'This could be due to caching or server configuration.</p></div>';
+			} else {
+				$redirect_test = '<div class="notice notice-info"><p>Redirect status: ' . esc_html( $status_code ) . '</p></div>';
+			}
+		}
+	}
+
 	echo '<div class="wrap"><h1>LLMS Export</h1>';
+	
+	// Show redirect status.
+	if ( ! empty( $redirect_test ) ) {
+		echo wp_kses_post( $redirect_test );
+	}
 	echo '<form method="post">';
 	wp_nonce_field( 'cbp_llms_export_action', 'cbp_llms_export_nonce' );
 	echo '<h2>Site Summary</h2>';

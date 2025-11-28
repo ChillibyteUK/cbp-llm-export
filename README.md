@@ -7,7 +7,8 @@ Export eligible WordPress posts and pages in markdown syntax to `llms.txt` for L
 - Select which post types to include
 - Add a one-line site summary (blockquote) for LLM context
 - Excludes posts with Yoast SEO noindex flag
-- Output written to `.well-known/llms.txt` (with automatic redirect from old `/llms.txt` location)
+- Output written to `.well-known/llms.txt`
+- Provides redirect setup instructions for compatibility across hosting platforms
 - Remembers selections and summary for future exports
 
 ## Usage
@@ -44,9 +45,11 @@ MIT
 
 ### 1.1
 - Changed output location from root to `.well-known/llms.txt` (following web standards)
-- Added automatic 301 redirect from old `/llms.txt` to new location
+- Added redirect setup instructions for Redirection plugin or WP Engine User Portal
+- Detects WP Engine hosting and shows appropriate redirect instructions
 - Added admin notice if old `llms.txt` file exists in root
 - Automatically creates `.well-known` directory if it doesn't exist
+- Checks if `.well-known/llms.txt` is accessible via HTTP
 - Fixed PHPCS lint warnings
 
 ### 1.0

@@ -16,26 +16,39 @@ add_action( 'admin_menu', 'cbp_llms_add_admin_menu' );
  * Outputs HTML for setting up redirect in Redirection plugin or via .htaccess
  */
 function cbp_llms_redirect_instructions() {
-	$has_redirection = is_plugin_active( 'redirection/redirection.php' );
-	$site_url        = get_site_url();
-	
-	if ( $has_redirection ) {
-		echo '<div class="notice notice-info"><p><strong>Set up redirect:</strong> In the Redirection plugin (<strong>Tools → Redirection</strong>), add:</p>';
-		echo '<ul style="margin-left: 2em;">';
-		echo '<li>Source URL: <code>/llms.txt</code></li>';
-		echo '<li>Match: <strong>URL only</strong></li>';
-		echo '<li>When matched: <strong>Redirect to URL</strong></li>';
-		echo '<li>Target URL: <code>' . esc_html( $site_url ) . '/.well-known/llms.txt</code></li>';
-		echo '<li>HTTP Code: <strong>301 - Moved Permanently</strong></li>';
-		echo '</ul>';
-		echo '<p><strong>Important:</strong> Make sure no <code>/llms.txt</code> file exists in your site root, or delete it. ';
-		echo 'The redirect only works if the file doesn\'t exist.</p></div>';
+	$site_url = get_site_url();
+
+	// Check if this is WP Engine (common indicator).
+	$is_wpengine = ( defined( 'WPE_APIKEY' ) || ( strpos( ABSPATH, 'wp-content' ) !== false && file_exists( '/nas' ) ) );
+
+	if ( $is_wpengine ) {
+		echo '<div class="notice notice-info"><p><strong>WP Engine Redirect Setup:</strong></p>';
+		echo '<p>The Redirection plugin won\'t work for non-existent files on WP Engine. ';
+		echo 'Use the <strong>WP Engine User Portal</strong> instead:</p>';
+		echo '<ol style="margin-left: 2em;">';
+		echo '<li>Log in to <strong>WP Engine User Portal</strong></li>';
+		echo '<li>Go to your site → <strong>Redirect rules</strong></li>';
+		echo '<li>Add a new redirect:</li>';
+		echo '<li style="margin-left: 2em;">Source: <code>^/llms\\.txt$</code> (regex)</li>';
+		echo '<li style="margin-left: 2em;">Destination: <code>/.well-known/llms.txt</code></li>';
+		echo '<li style="margin-left: 2em;">Type: <strong>301 Permanent</strong></li>';
+		echo '</ol></div>';
 	} else {
-		echo '<div class="notice notice-info"><p><strong>Redirect setup:</strong> To redirect <code>/llms.txt</code> to <code>/.well-known/llms.txt</code>:</p>';
-		echo '<ul style="margin-left: 2em;">';
-		echo '<li><strong>Install the Redirection plugin</strong> (recommended for WP Engine)</li>';
-		echo '<li><strong>Or for WP Engine:</strong> Add redirect in User Portal</li>';
-		echo '</ul></div>';
+		$has_redirection = is_plugin_active( 'redirection/redirection.php' );
+
+		if ( $has_redirection ) {
+			echo '<div class="notice notice-info"><p><strong>Set up redirect:</strong> In Redirection (<strong>Tools → Redirection</strong>):</p>';
+			echo '<ul style="margin-left: 2em;">';
+			echo '<li>Source URL: <code>/llms.txt</code></li>';
+			echo '<li>Match: <strong>URL only</strong></li>';
+			echo '<li>Target URL: <code>' . esc_html( $site_url ) . '/.well-known/llms.txt</code></li>';
+			echo '<li>HTTP Code: <strong>301</strong></li>';
+			echo '</ul>';
+			echo '<p><strong>Note:</strong> Delete any existing <code>/llms.txt</code> file first.</p></div>';
+		} else {
+			echo '<div class="notice notice-info"><p><strong>Optional redirect:</strong> Install the <strong>Redirection plugin</strong> ';
+			echo 'to redirect <code>/llms.txt</code> to <code>/.well-known/llms.txt</code></p></div>';
+		}
 	}
 }
 

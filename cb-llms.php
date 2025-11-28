@@ -17,22 +17,23 @@ add_action( 'admin_menu', 'cbp_llms_add_admin_menu' );
  */
 function cbp_llms_redirect_instructions() {
 	$has_redirection = is_plugin_active( 'redirection/redirection.php' );
+	$site_url        = get_site_url();
 	
 	if ( $has_redirection ) {
-		echo '<div class="notice notice-info"><p><strong>Recommended:</strong> Set up a 301 redirect in the Redirection plugin:</p>';
+		echo '<div class="notice notice-info"><p><strong>Set up redirect:</strong> A placeholder <code>/llms.txt</code> file will be created to enable redirects.</p>';
+		echo '<p>In the Redirection plugin (<strong>Tools → Redirection</strong>), add:</p>';
 		echo '<ul style="margin-left: 2em;">';
-		echo '<li>Go to <strong>Tools → Redirection</strong></li>';
-		echo '<li>Add a new redirect:</li>';
-		echo '<li style="margin-left: 2em;">Source URL: <code>/llms.txt</code></li>';
-		echo '<li style="margin-left: 2em;">Target URL: <code>/.well-known/llms.txt</code></li>';
-		echo '<li style="margin-left: 2em;">Type: <strong>301 - Moved Permanently</strong></li>';
+		echo '<li>Source URL: <code>/llms.txt</code></li>';
+		echo '<li>Target URL: <code>' . esc_html( $site_url ) . '/.well-known/llms.txt</code></li>';
+		echo '<li>HTTP Code: <strong>301 - Moved Permanently</strong></li>';
 		echo '</ul></div>';
 	} else {
-		echo '<div class="notice notice-info"><p><strong>Optional:</strong> To redirect from the old <code>/llms.txt</code> location, you can:</p>';
+		echo '<div class="notice notice-info"><p><strong>Redirect setup:</strong> A placeholder <code>/llms.txt</code> will be created.</p>';
+		echo '<p>To redirect it to <code>/.well-known/llms.txt</code>:</p>';
 		echo '<ul style="margin-left: 2em;">';
-		echo '<li><strong>Install the Redirection plugin</strong> and create a 301 redirect from <code>/llms.txt</code> to <code>/.well-known/llms.txt</code></li>';
-		echo '<li><strong>Or add to .htaccess</strong> (Apache): <code>Redirect 301 /llms.txt /.well-known/llms.txt</code></li>';
-		echo '<li><strong>Or add to nginx.conf</strong> (Nginx): <code>rewrite ^/llms\.txt$ /.well-known/llms.txt permanent;</code></li>';
+		echo '<li><strong>Install the Redirection plugin</strong> (recommended)</li>';
+		echo '<li><strong>Or for WP Engine:</strong> Add redirect in User Portal</li>';
+		echo '<li><strong>Or for Apache:</strong> Add to .htaccess</li>';
 		echo '</ul></div>';
 	}
 }
@@ -146,8 +147,14 @@ function cbp_llms_admin_page() {
 
 			$file = $well_known_dir . '/llms.txt';
 			if ( $wp_filesystem->put_contents( $file, $output, FS_CHMOD_FILE ) ) {
+				// Also create a placeholder /llms.txt in root for redirect purposes.
+				$root_placeholder    = ABSPATH . 'llms.txt';
+				$placeholder_content = '# This file has moved to /.well-known/llms.txt';
+				$wp_filesystem->put_contents( $root_placeholder, $placeholder_content, FS_CHMOD_FILE );
+				
 				echo '<h2>Export Complete</h2>';
 				echo '<p>Output written to <code>.well-known/llms.txt</code></p>';
+				echo '<p>A placeholder file was created at <code>/llms.txt</code> to enable redirects.</p>';
 				echo '<pre>' . esc_html( $output ) . '</pre>';
 			} else {
 				echo '<h2>Export Failed</h2>';

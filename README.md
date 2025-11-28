@@ -7,7 +7,7 @@ Export eligible WordPress posts and pages in markdown syntax to `llms.txt` for L
 - Select which post types to include
 - Add a one-line site summary (blockquote) for LLM context
 - Excludes posts with Yoast SEO noindex flag
-- Output written to the WordPress root as `llms.txt`
+- Output written to `.well-known/llms.txt` (with automatic redirect from old `/llms.txt` location)
 - Remembers selections and summary for future exports
 
 ## Usage
@@ -15,7 +15,7 @@ Export eligible WordPress posts and pages in markdown syntax to `llms.txt` for L
 2. Enter a one-line summary describing your site (for LLMs).
 3. Select the post types you want to include.
 4. Click **Export to llms.txt**.
-5. The file will be created in your WordPress root directory.
+5. The file will be created at `.well-known/llms.txt` in your WordPress root directory.
 
 ## Output Format
 ```
@@ -39,3 +39,20 @@ Export eligible WordPress posts and pages in markdown syntax to `llms.txt` for L
 
 ## License
 MIT
+
+## Changelog
+
+### 1.1
+- Changed output location from root to `.well-known/llms.txt` (following web standards)
+- Added automatic 301 redirect from old `/llms.txt` to new location
+- Added admin notice if old `llms.txt` file exists in root
+- Automatically creates `.well-known` directory if it doesn't exist
+- Fixed PHPCS lint warnings
+
+### 1.0
+- Initial release
+- Admin page for exporting posts/pages
+- Configurable post type selection
+- Site summary field
+- Yoast SEO noindex detection
+- Markdown formatted output

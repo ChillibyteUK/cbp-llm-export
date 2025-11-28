@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CBP LLMS Exporter
  * Description: Export eligible posts/pages in markdown syntax to llms.txt
- * Version: 1.0
+ * Version: 1.1
  * Author: Chillibyte - DS
  * Author URI: https://chillibyte.co.uk
  *
@@ -11,6 +11,19 @@
 
 // Add admin menu.
 add_action( 'admin_menu', 'cbp_llms_add_admin_menu' );
+
+// Add redirect from old location to new location.
+add_action( 'template_redirect', 'cbp_llms_redirect_old_location' );
+
+/**
+ * Redirects requests for /llms.txt to /.well-known/llms.txt
+ */
+function cbp_llms_redirect_old_location() {
+	if ( isset( $_SERVER['REQUEST_URI'] ) && '/llms.txt' === $_SERVER['REQUEST_URI'] ) {
+		wp_safe_redirect( '/.well-known/llms.txt', 301 );
+		exit;
+	}
+}
 
 /**
  * Adds the LLMS Export page to the WordPress admin menu.
@@ -37,6 +50,15 @@ function cbp_llms_admin_page() {
 	// Load saved selections and summary.
 	$selected = get_option( 'cbp_llms_selected_post_types', array_keys( $post_types ) );
 	$summary  = get_option( 'cbp_llms_summary', '' );
+
+	// Check if old llms.txt exists in root.
+	$old_file = ABSPATH . 'llms.txt';
+	if ( file_exists( $old_file ) ) {
+		echo '<div class="notice notice-warning"><p><strong>Notice:</strong> An old <code>llms.txt</code> file exists in your site root. ';
+		echo 'This plugin now uses <code>.well-known/llms.txt</code> instead. ';
+		echo 'The old file will be automatically redirected, but you may want to delete it manually.</p></div>';
+	}
+
 	echo '<div class="wrap"><h1>LLMS Export</h1>';
 	echo '<form method="post">';
 	wp_nonce_field( 'cbp_llms_export_action', 'cbp_llms_export_nonce' );
@@ -54,10 +76,11 @@ function cbp_llms_admin_page() {
 			isset( $_POST['cbp_llms_export_nonce'] ) &&
 			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['cbp_llms_export_nonce'] ) ), 'cbp_llms_export_action' )
 		) {
-			$raw_selected = isset( $_POST['cbp_llms_post_types'] ) ? $_POST['cbp_llms_post_types'] : array_keys( $post_types );
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below with array_map.
+			$raw_selected = isset( $_POST['cbp_llms_post_types'] ) ? wp_unslash( $_POST['cbp_llms_post_types'] ) : array_keys( $post_types );
 			$selected     = array();
 			if ( is_array( $raw_selected ) ) {
-				$selected = array_map( 'sanitize_text_field', wp_unslash( $raw_selected ) );
+				$selected = array_map( 'sanitize_text_field', $raw_selected );
 			}
 			// Save selections.
 			update_option( 'cbp_llms_selected_post_types', $selected );
@@ -67,19 +90,31 @@ function cbp_llms_admin_page() {
 			// Reload summary from DB so textarea always shows latest value.
 			$summary = get_option( 'cbp_llms_summary', '' );
 			$output  = cbp_llms_generate_output( $selected, $summary );
-			$file    = ABSPATH . 'llms.txt';
+
+			// Ensure .well-known directory exists.
+			$well_known_dir = ABSPATH . '.well-known';
 			global $wp_filesystem;
 			if ( ! function_exists( 'WP_Filesystem' ) ) {
 				require_once ABSPATH . 'wp-admin/includes/file.php';
 			}
 			WP_Filesystem();
+
+			if ( ! $wp_filesystem->is_dir( $well_known_dir ) ) {
+				if ( ! $wp_filesystem->mkdir( $well_known_dir, FS_CHMOD_DIR ) ) {
+					echo '<h2>Export Failed</h2>';
+					echo '<p>Could not create <code>.well-known</code> directory. Please create it manually with proper permissions.</p>';
+					return;
+				}
+			}
+
+			$file = $well_known_dir . '/llms.txt';
 			if ( $wp_filesystem->put_contents( $file, $output, FS_CHMOD_FILE ) ) {
 				echo '<h2>Export Complete</h2>';
-				echo '<p>Output written to <code>llms.txt</code> in site root.</p>';
+				echo '<p>Output written to <code>.well-known/llms.txt</code></p>';
 				echo '<pre>' . esc_html( $output ) . '</pre>';
 			} else {
 				echo '<h2>Export Failed</h2>';
-				echo '<p>Could not write to <code>llms.txt</code>. Check file permissions.</p>';
+				echo '<p>Could not write to <code>.well-known/llms.txt</code>. Check file permissions.</p>';
 			}
 		} else {
 			echo '<h2>Export Failed</h2>';

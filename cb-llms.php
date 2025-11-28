@@ -12,22 +12,28 @@
 // Add admin menu.
 add_action( 'admin_menu', 'cbp_llms_add_admin_menu' );
 
-// Add redirect from old location to new location.
-add_action( 'template_redirect', 'cbp_llms_redirect_old_location' );
-
 /**
- * Redirects requests for /llms.txt to /.well-known/llms.txt
+ * Outputs HTML for setting up redirect in Redirection plugin or via .htaccess
  */
-function cbp_llms_redirect_old_location() {
-	if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
-		// Match /llms.txt or /llms.txt?params at root or in subdirectory.
-		if ( preg_match( '#/llms\.txt(\?.*)?$#', $request_uri ) ) {
-			$site_path = wp_parse_url( get_site_url(), PHP_URL_PATH );
-			$new_path  = trailingslashit( $site_path ) . '.well-known/llms.txt';
-			wp_safe_redirect( $new_path, 301 );
-			exit;
-		}
+function cbp_llms_redirect_instructions() {
+	$has_redirection = is_plugin_active( 'redirection/redirection.php' );
+	
+	if ( $has_redirection ) {
+		echo '<div class="notice notice-info"><p><strong>Recommended:</strong> Set up a 301 redirect in the Redirection plugin:</p>';
+		echo '<ul style="margin-left: 2em;">';
+		echo '<li>Go to <strong>Tools → Redirection</strong></li>';
+		echo '<li>Add a new redirect:</li>';
+		echo '<li style="margin-left: 2em;">Source URL: <code>/llms.txt</code></li>';
+		echo '<li style="margin-left: 2em;">Target URL: <code>/.well-known/llms.txt</code></li>';
+		echo '<li style="margin-left: 2em;">Type: <strong>301 - Moved Permanently</strong></li>';
+		echo '</ul></div>';
+	} else {
+		echo '<div class="notice notice-info"><p><strong>Optional:</strong> To redirect from the old <code>/llms.txt</code> location, you can:</p>';
+		echo '<ul style="margin-left: 2em;">';
+		echo '<li><strong>Install the Redirection plugin</strong> and create a 301 redirect from <code>/llms.txt</code> to <code>/.well-known/llms.txt</code></li>';
+		echo '<li><strong>Or add to .htaccess</strong> (Apache): <code>Redirect 301 /llms.txt /.well-known/llms.txt</code></li>';
+		echo '<li><strong>Or add to nginx.conf</strong> (Nginx): <code>rewrite ^/llms\.txt$ /.well-known/llms.txt permanent;</code></li>';
+		echo '</ul></div>';
 	}
 }
 
@@ -62,50 +68,35 @@ function cbp_llms_admin_page() {
 	if ( file_exists( $old_file ) ) {
 		echo '<div class="notice notice-warning"><p><strong>Notice:</strong> An old <code>llms.txt</code> file exists in your site root. ';
 		echo 'This plugin now uses <code>.well-known/llms.txt</code> instead. ';
-		echo 'The old file will be automatically redirected, but you may want to delete it manually.</p></div>';
+		echo 'You may want to delete the old file and set up a redirect (see below).</p></div>';
 	}
 
-	// Check redirect status.
-	$site_url      = get_site_url();
-	$old_url       = trailingslashit( $site_url ) . 'llms.txt';
-	$new_url       = trailingslashit( $site_url ) . '.well-known/llms.txt';
-	$new_file      = ABSPATH . '.well-known/llms.txt';
-	$redirect_test = '';
+	// Show redirect instructions.
+	cbp_llms_redirect_instructions();
 
+	// Check if file is accessible via HTTP.
+	$new_file = ABSPATH . '.well-known/llms.txt';
 	if ( file_exists( $new_file ) ) {
-		// Test if redirect is working.
+		$new_url  = trailingslashit( get_site_url() ) . '.well-known/llms.txt';
 		$response = wp_remote_head(
-			$old_url,
+			$new_url,
 			array(
-				'redirection' => 0,
-				'sslverify'   => false,
+				'sslverify' => false,
 			)
 		);
 
 		if ( ! is_wp_error( $response ) ) {
 			$status_code = wp_remote_retrieve_response_code( $response );
-			$location    = wp_remote_retrieve_header( $response, 'location' );
-
-			if ( 301 === $status_code && false !== strpos( $location, '.well-known/llms.txt' ) ) {
-				$redirect_test = '<div class="notice notice-success"><p>✓ Redirect is working: <code>/llms.txt</code> → <code>/.well-known/llms.txt</code> (301)</p></div>';
+			if ( 200 === $status_code ) {
+				echo '<div class="notice notice-success"><p>✓ File is accessible: <a href="' . esc_url( $new_url ) . '" target="_blank"><code>/.well-known/llms.txt</code></a></p></div>';
 			} elseif ( 404 === $status_code ) {
-				$redirect_test  = '<div class="notice notice-info"><p><strong>Note:</strong> The file <code>/.well-known/llms.txt</code> does not exist yet. ';
-				$redirect_test .= 'Click "Export to llms.txt" below to create it. The redirect will work once the file is created.</p></div>';
-			} elseif ( 200 === $status_code ) {
-				$redirect_test  = '<div class="notice notice-warning"><p>⚠ Redirect may not be working. <code>/llms.txt</code> returned status 200. ';
-				$redirect_test .= 'This could be due to caching or server configuration.</p></div>';
-			} else {
-				$redirect_test = '<div class="notice notice-info"><p>Redirect status: ' . esc_html( $status_code ) . '</p></div>';
+				echo '<div class="notice notice-warning"><p>⚠ <strong>Configuration Issue:</strong> The file exists on the server but returns 404. ';
+				echo 'Check that your server allows access to <code>.well-known</code> directory.</p></div>';
 			}
 		}
 	}
 
 	echo '<div class="wrap"><h1>LLMS Export</h1>';
-	
-	// Show redirect status.
-	if ( ! empty( $redirect_test ) ) {
-		echo wp_kses_post( $redirect_test );
-	}
 	echo '<form method="post">';
 	wp_nonce_field( 'cbp_llms_export_action', 'cbp_llms_export_nonce' );
 	echo '<h2>Site Summary</h2>';
